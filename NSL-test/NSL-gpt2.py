@@ -67,8 +67,10 @@ def ffn(x, mlp):  # [n_seq, n_embd] -> [n_seq, n_embd]
         Output: Tensor
     """
     w_b1, w_b2 = mlp['c_fc'], mlp['c_proj']
-    pass
-
+    x = linear(x, w_b1)
+    x = gelu(x)
+    x = linear(x, w_b2)
+    return x
 
 def attention(q, k, v, mask):  # [n_q, d_k], [n_k, d_k], [n_k, d_v], [n_q, n_k] -> [n_q, d_v]
     """
@@ -83,7 +85,11 @@ def attention(q, k, v, mask):  # [n_q, d_k], [n_k, d_k], [n_k, d_v], [n_q, n_k] 
             mlp: dictionary that load from gpt2 weight. w_b1 and w_b2 are the params of two linear layer
         Output: Tensor
     """
-    pass
+    d_k = k.shape[-1]
+    scores = q @ k.transpose(-2, -1) / math.sqrt(d_k)
+    scores = scores + mask
+    weights = softmax(scores)
+    return weights @ v
 
 def mha(x, attn, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
     """
@@ -104,7 +110,7 @@ def mha(x, attn, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
         Task: Split the q,k,v matrix from the tensor x
         Notes: [n_seq, 3*n_embd] -> 3 * [n_seq, n_embd]
     """
-    qkv = None # need to modify
+    qkv = x.chunk(3, dim = -1) # need to modify
 
     # Split into heads
     qkv_heads = [qkv_part.chunk(n_head, dim=-1) for qkv_part in qkv]  # 3 * [n_seq, n_embd] -> 3 * n_head * [n_seq, n_embd/n_head]
@@ -121,7 +127,8 @@ def mha(x, attn, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
             | 0    0    0  ...   0  |
         Mask is a tensor whose dimension is [n_seq, n_seq]
     """
-    causal_mask = None # need to modify
+    n_seq= x.shape[0]
+    causal_mask = torch.triu(torch.full((n_seq, n_seq), float('-inf')), diagonal=1) # need to modify
 
     # Perform attention over each head
     out_heads = [attention(q, k, v, causal_mask) for q, k, v in qkv_heads]  # n_head * [n_seq, n_embd/n_head]
@@ -131,7 +138,7 @@ def mha(x, attn, n_head):  # [n_seq, n_embd] -> [n_seq, n_embd]
         Task: merge multi-heads results
         Notes: n_head * [n_seq, n_embd/n_head] --> [n_seq, n_embd]
     """
-    x = None # need to modify
+    x = torch.cat(out_heads, dim = -1) # need to modify
     
     # Out projection
     x = linear(x, c_proj)  # [n_seq, n_embd] -> [n_seq, n_embd]
