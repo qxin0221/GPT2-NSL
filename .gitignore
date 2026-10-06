@@ -1,0 +1,22 @@
+# PyCharm / JetBrains IDE settings
+.idea/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+
+# Downloaded GPT-2 checkpoints
+models/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
